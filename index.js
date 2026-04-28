@@ -1,5 +1,5 @@
+const puppeteer = require("puppeteer");
 const axios = require("axios");
-const cheerio = require("cheerio");
 
 const URL =
   "https://shop.amul.com/en/product/amul-chocolate-whey-protein-34-g-or-pack-of-60-sachets";
@@ -23,35 +23,59 @@ async function sendTelegram(msg) {
 }
 
 async function checkStock() {
+  let browser;
+
   try {
-    const { data } = await axios.get(URL, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-      },
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-    const $ = cheerio.load(data);
-    const pageText = $("body").text().toLowerCase();
+    const page = await browser.newPage();
 
-    console.log("Page fetched successfully");
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+    );
+
+    await page.goto(URL, { waitUntil: "networkidle2", timeout: 60000 });
+
+    // Get visible text + button text
+    const content = await page.evaluate(() => {
+      return document.body.innerText.toLowerCase();
+    });
+
+    const buttons = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll("button"))
+        .map((b) => b.innerText.toLowerCase())
+        .join(" ");
+    });
+
+    console.log("Page loaded successfully");
 
     const isOutOfStock =
-      pageText.includes("sold out") ||
-      pageText.includes("out of stock") ||
-      pageText.includes("currently unavailable");
+      content.includes("sold out") ||
+      content.includes("out of stock") ||
+      content.includes("currently unavailable");
 
-    if (!isOutOfStock) {
+    const hasBuyButton =
+      buttons.includes("add to cart") || buttons.includes("buy now");
+
+    if (!isOutOfStock && hasBuyButton) {
       console.log("🟢 IN STOCK DETECTED!");
 
       await sendTelegram(
-        "🟢 Amul product is BACK IN STOCK!\nGo buy it quickly!\n" + URL
+        "🟢 Amul product is BACK IN STOCK!\nGo buy now!\n" + URL
       );
     } else {
       console.log("❌ Still out of stock");
     }
+
+    await browser.close();
   } catch (err) {
     console.error("❌ ERROR:", err.message);
+
+    if (browser) await browser.close();
+
     process.exit(1);
   }
 }
