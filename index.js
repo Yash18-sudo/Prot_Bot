@@ -58,9 +58,9 @@ async function checkStock() {
       content.includes("currently unavailable");
 
     const hasBuyButton =
-      buttons.includes("add to cart") || buttons.includes("buy now");
+      buttons.includes("Notify Me");
 
-    if (!isOutOfStock && hasBuyButton) {
+    if (!isOutOfStock && !hasBuyButton) {
       console.log("🟢 IN STOCK DETECTED!");
 
       await sendTelegram(
