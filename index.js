@@ -7,7 +7,7 @@ const URL =
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
-const OUT_OF_STOCK_TEXT = "Out of Stock";
+const OUT_OF_STOCK_TEXT = "Sold Out";
 
 async function sendTelegram(msg) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
