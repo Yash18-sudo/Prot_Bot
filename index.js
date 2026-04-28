@@ -1,3 +1,4 @@
+const axios = require("axios");
 const cheerio = require("cheerio");
 
 const URL =
@@ -10,15 +11,9 @@ async function sendTelegram(msg) {
   try {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
-    await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: msg,
-      }),
+    await axios.post(url, {
+      chat_id: CHAT_ID,
+      text: msg,
     });
 
     console.log("✅ Telegram sent");
@@ -29,16 +24,14 @@ async function sendTelegram(msg) {
 
 async function checkStock() {
   try {
-    const response = await fetch(URL, {
+    const { data } = await axios.get(URL, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
       },
     });
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
+    const $ = cheerio.load(data);
     const pageText = $("body").text().toLowerCase();
 
     console.log("Page fetched successfully");
@@ -52,7 +45,7 @@ async function checkStock() {
       console.log("🟢 IN STOCK DETECTED!");
 
       await sendTelegram(
-        "🟢 Amul product is BACK IN STOCK!\nGo buy it quickly!"
+        "🟢 Amul product is BACK IN STOCK!\nGo buy it quickly!\n" + URL
       );
     } else {
       console.log("❌ Still out of stock");
