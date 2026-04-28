@@ -1,79 +1,31 @@
-const puppeteer = require("puppeteer");
-const axios = require("axios");
+name: Amul Stock Checker
 
-const URL =
-  "https://shop.amul.com/en/product/amul-chocolate-whey-protein-34-g-or-pack-of-60-sachets";
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const CHAT_ID = process.env.CHAT_ID;
+jobs:
+  check-stock:
+    runs-on: ubuntu-latest
 
-async function sendTelegram(msg) {
-  try {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    await axios.post(url, {
-      chat_id: CHAT_ID,
-      text: msg,
-    });
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
-    console.log("✅ Telegram sent");
-  } catch (err) {
-    console.error("❌ Telegram error:", err.message);
-  }
-}
+      - name: Install dependencies
+        run: npm install
 
-async function checkStock() {
-  let browser;
+      - name: Install Chrome for Puppeteer
+        run: npx puppeteer browsers install chrome
 
-  try {
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
-    const page = await browser.newPage();
-
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-    );
-
-    await page.goto(URL, {
-      waitUntil: "networkidle2",
-      timeout: 60000,
-    });
-
-    const pageText = await page.evaluate(() =>
-      document.body.innerText.toLowerCase()
-    );
-
-    console.log("Page loaded successfully");
-
-    const hasSoldOut =
-      pageText.includes("sold out") ||
-      pageText.includes("out of stock");
-
-    const hasNotifyMe = pageText.includes("notify me");
-
-    const isOutOfStock = hasSoldOut || hasNotifyMe;
-
-    if (!isOutOfStock) {
-      console.log("🟢 IN STOCK DETECTED!");
-
-      await sendTelegram(
-        "🟢 Amul product is IN STOCK!\nGo buy now!\n" + URL
-      );
-    } else {
-      console.log("❌ OUT OF STOCK (Sold Out / Notify Me detected)");
-    }
-
-    await browser.close();
-  } catch (err) {
-    console.error("❌ ERROR:", err.message);
-
-    if (browser) await browser.close();
-
-    process.exit(1);
-  }
-}
-
-checkStock();
+      - name: Run stock checker
+        run: node index.js
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
